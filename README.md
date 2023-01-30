@@ -1,13 +1,6 @@
-# DeepfakeDetection
-Final Year Project: Deepfake Detection
+RNNs are well-suited for sequences of data and can be used to detect deepfakes by analyzing the temporal evolution of the video frames. RNNs are a type of neural network that can process sequences of data, such as video frames. They can be trained to recognize patterns in the temporal evolution of the frames that are indicative of deepfakes. For example, they might look for differences in the motion of facial landmarks between real and fake videos.
 
-# Steps to Create a Detection Program
-1. Preprocess the dataset by extracting the frames from the videos and aligning the faces in the frames. You can use OpenCV for this step.
 
-2. Extract facial features from the frames using a pre-trained model such as FaceNet or VGGFace. You can use the Tensorflow Keras-OpenCV library to load the pre-trained model and extract the features.
+Binary classification vs. RNNs: Binary classification is a simpler approach that directly outputs a binary prediction, whereas RNNs are more complex and analyze the temporal evolution of the video frames. Binary classification is computationally more efficient, but RNNs can provide more nuanced and in-depth analysis of the video.
 
-3. Compare the extracted facial features to a database of real images of the person to determine if the video is a deepfake or not.
-
-4. Train a machine learning model using the extracted features and labels as input. You can use a variety of models such as SVM, Random Forest, or CNN.
-
-5. Finally, test the model on unseen data and evaluate its performance.
+RNNs vs. computer vision-based techniques: RNNs are better suited for analyzing sequences of data, such as video frames, whereas computer vision-based techniques are better suited for analyzing individual video frames. RNNs can provide a more nuanced analysis of the temporal evolution of the video, whereas computer vision-based techniques can provide a more detailed analysis of individual frames.

@@ -1,98 +1,64 @@
-import cv2
-import dlib
-import math
-import numpy as np
 import tensorflow as tf
-from tensorflow import keras
+import cv2
+import numpy as np
+import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score
+
+def extract_features_from_frames(frames):
+    features = []
+    for frame in frames:
+        mean = np.mean(frame)
+        std = np.std(frame)
+        features.append([mean, std])
+    return np.array(features)
 
 
-def align_face(frame, landmarks):
-    # Get the landmarks of the eyes and mouth
-    left_eye = landmarks[36:42]
-    right_eye = landmarks[42:48]
-    mouth = landmarks[48:68]
+# Load the labels from the Deepfake Detection Challenge
+df = pd.read_csv('deepfake_detection_challenge.csv')
 
-    # Get the center of the eyes
-    eyes_center = ((left_eye[0].x + right_eye[3].x) // 2, (left_eye[0].y + right_eye[3].y) // 2)
+# Extract features from each video
+X = []
+for video_path in df['video_path']:
+    cap = cv2.VideoCapture(video_path)
+    frames = []
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frames.append(frame)
+    cap.release()
+    features = extract_features_from_frames(frames) # Replace with your feature extraction method
+    X.append(features)
 
-    # Get the angle between the eyes
-    dy = right_eye[1].y - left_eye[1].y
-    dx = right_eye[1].x - left_eye[1].x
-    angle = math.atan2(dy, dx) * 180.0 / math.pi
+# Convert the input data and labels into numpy arrays
+X = np.array(X)
+y = df['label'].values
 
-    # Get the size of the eyes
-    eyes_size = int(math.sqrt((dy ** 2) + (dx ** 2)))
+# Normalize the input data
+X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
 
-    # Get the rotation matrix
-    rot_mat = cv2.getRotationMatrix2D(eyes_center, angle, 1.0)
+# Split the data into training and validation sets
+timesteps, num_features = X.shape[1], X.shape[2]
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Get the aligned face
-    aligned_face = cv2.warpAffine(frame, rot_mat, (frame.shape[1], frame.shape[0]))
+batch_size = 32
+num_epochs = 10
 
-    return aligned_face
+# Define the model architecture
+model = tf.keras.Sequential([
+    tf.keras.layers.LSTM(64, input_shape=(timesteps, num_features)),
+    tf.keras.layers.Dense(32, activation='relu'),
+    tf.keras.layers.Dense(1, activation='sigmoid')
+])
 
-def train_model(features,labels):
-    # Split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2)
+# Compile the model with a loss function and optimizer
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
 
-    # Create a support vector classifier
-    model = SVC(kernel='linear')
+# Fit the model on the training data
+history = model.fit(X_train, y_train, batch_size=batch_size, epochs=num_epochs, 
+                    validation_data=(X_val, y_val))
 
-    # Train the classifier on the training data
-    model.fit(X_train, y_train)
-
-    # Predict on the testing data
-    y_pred = model.predict(X_test)
-
-    # Calculate the accuracy of the model
-    accuracy = accuracy_score(y_test, y_pred)
-    print("Accuracy:", accuracy)
-    return model
-
-# Load dlib's face detector
-detector = dlib.get_frontal_face_detector()
-
-# Load dlib's landmark predictor
-predictor = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
-
-# Load pre-trained FaceNet model
-model = keras.models.load_model('facenet_keras.h5')
-
-# Open video file
-video = cv2.VideoCapture('video.mp4')
-
-# Create labels for the data. 1 for real, 0 for deepfake.
-labels = np.array([1, 1, 1, 0, 0, 0])
-
-while True:
-    # Read frame from video
-    ret, frame = video.read()
-
-    # Exit loop if video ends
-    if not ret:
-        break
-
-    # Convert frame to grayscale
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    # Detect faces in the frame
-    faces = detector(gray)
-
-    # Iterate over each face
-    for face in faces:
-        # Get the landmarks of the face
-        landmarks = predictor(gray, face)
-
-        # Align the face using the landmarks
-        aligned_face = align_face(frame, landmarks)
-
-        # Extract facial features from aligned face
-        features = model.predict(aligned_face[None, ...])
-
-classifier = train_model(features, labels)
-
-# Release video file
-video.release()
+# Evaluate the model on the validation data
+val_loss, val_acc = model.evaluate(X_val, y_val, batch_size=batch_size)
+print("Validation Loss: {:.4f}".format(val_loss))
+print("Validation Accuracy: {:.4f}".format(val_acc))
