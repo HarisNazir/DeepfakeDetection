@@ -4,6 +4,7 @@ from pipeline import *
 import json
 from sklearn.metrics import confusion_matrix
 from tensorflow.keras import backend as K
+import matplotlib as plt
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
@@ -41,28 +42,44 @@ print('Predicted :', classifier.predict(X), '\nReal class :', y)
 classifier.load('weights/Meso4_F2F.h5')
 
 
-true_labels = []
-pred_labels = []
-
 predictions = compute_accuracy(classifier, 'data')
-for video_name in predictions:
-    prediction_value = predictions[video_name][0]
+
+# Get the ground truth labels
+ground_truth_labels = []
+for video_name, prediction in predictions.items():
     video_name = video_name + '.mp4'
     ground_truth_value = ground_truth[video_name]['label']
+    ground_truth_labels.append(1.0 if ground_truth_value == "FAKE" else 0.0)
 
-    true_labels.append(1.0 if ground_truth_value == "FAKE" else 0.0)
-    pred_labels.append(prediction_value)
+# Get the predicted labels
+predicted_labels = [prediction[0] for prediction in predictions.values()]
 
-y_true = np.array(true_labels)
-y_pred = np.array(pred_labels)
+# Calculate the confusion matrix
+conf_mat = confusion_matrix(ground_truth_labels, predicted_labels)
 
-loss = K.eval(K.mean(K.binary_crossentropy(y_true, y_pred)))
-acc = accuracy(y_true, y_pred)
-print("Loss: ", loss)
-print("Accuracy: ", acc)
+# Visualize the confusion matrix
+plt.imshow(conf_mat, cmap='Blues')
+plt.title('Confusion Matrix')
+plt.xlabel('Predicted')
+plt.ylabel('Ground Truth')
+plt.xticks([0, 1], ['Real', 'Fake'])
+plt.yticks([0, 1], ['Real', 'Fake'])
+plt.colorbar()
+for i in range(conf_mat.shape[0]):
+    for j in range(conf_mat.shape[1]):
+        plt.text(j, i, conf_mat[i, j], ha='center', va='center', color='black')
+plt.show()
 
-conf_matrix = confusion_matrix(y_true, np.round(y_pred))
-print("Confusion Matrix: \n", conf_matrix)
+# Calculate the loss rate
+loss_rate = 1.0 - accuracy
+
+# Plot the accuracy and loss rate
+plt.plot([accuracy, loss_rate])
+plt.title('Accuracy and Loss Rate')
+plt.xlabel('Metric')
+plt.ylabel('Value')
+plt.xticks([0, 1], ['Accuracy', 'Loss Rate'])
+plt.show()
 
 
 # predictions = compute_accuracy(classifier, 'data')
