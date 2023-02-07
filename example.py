@@ -2,6 +2,7 @@ import numpy as np
 from classifiers import *
 from pipeline import *
 import json
+from sklearn.metrics import confusion_matrix
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
@@ -41,9 +42,11 @@ total_predictions = len(predictions)
 
 for video_name, prediction in predictions.items():
     prediction_value = prediction[0]
+    video_name = video_name + '.mp4'
     ground_truth_value = ground_truth[video_name]['label']
 
-    if prediction_value == ground_truth_value:
+    if prediction_value == 1.0 and ground_truth_value == "FAKE":
         correct_predictions += 1
+
 accuracy = correct_predictions / total_predictions
 print('FINAL ACCURACY: ', accuracy)
