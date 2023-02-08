@@ -1,64 +1,78 @@
-import tensorflow as tf
-import cv2
+import os
+import json
 import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sn
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
+from keras.models import Sequential
+from keras.layers import Dense, LSTM
 
-def extract_features_from_frames(frames):
-    features = []
-    for frame in frames:
-        mean = np.mean(frame)
-        std = np.std(frame)
-        features.append([mean, std])
-    return np.array(features)
+# Load the metadata
+with open('data/metadata.json', 'r') as f:
+    metadata = json.load(f)
+
+# Split the data into train and test sets
+train_files = [k for k, v in metadata.items() if v['split'] == 'train']
+test_files = [k for k, v in metadata.items() if v['split'] == 'test']
+
+# Preprocess the data
 
 
-# Load the labels from the Deepfake Detection Challenge
-df = pd.read_csv('deepfake_detection_challenge.csv')
+def preprocess(video_file):
+    # TODO: Preprocess the video file and return the features
+    # For example, you can extract the frames from the video and convert them into a numpy array
+    return features
 
-# Extract features from each video
-X = []
-for video_path in df['video_path']:
-    cap = cv2.VideoCapture(video_path)
-    frames = []
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
-        frames.append(frame)
-    cap.release()
-    features = extract_features_from_frames(frames) # Replace with your feature extraction method
-    X.append(features)
 
-# Convert the input data and labels into numpy arrays
-X = np.array(X)
-y = df['label'].values
+X_train = np.array([preprocess(os.path.join('data', f)) for f in train_files])
+y_train = np.array([metadata[f]['label'] for f in train_files])
+X_test = np.array([preprocess(os.path.join('data', f)) for f in test_files])
+y_test = np.array([metadata[f]['label'] for f in test_files])
 
-# Normalize the input data
-X = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
+# One hot encoding of labels
+labels = np.unique(y_train)
+one_hot_map = {l: i for i, l in enumerate(labels)}
+y_train = np.array([one_hot_map[y] for y in y_train])
+y_test = np.array([one_hot_map[y] for y in y_test])
 
-# Split the data into training and validation sets
-timesteps, num_features = X.shape[1], X.shape[2]
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+# Build the model
+model = Sequential()
+model.add(LSTM(32, input_shape=(X_train.shape[1], X_train.shape[2])))
+model.add(Dense(len(labels), activation='softmax'))
+model.compile(loss='categorical_crossentropy',
+              optimizer='adam', metrics=['accuracy'])
 
-batch_size = 32
-num_epochs = 10
+# Train the model
+history = model.fit(X_train, y_train, batch_size=32,
+                    epochs=10, validation_data=(X_test, y_test))
 
-# Define the model architecture
-model = tf.keras.Sequential([
-    tf.keras.layers.LSTM(64, input_shape=(timesteps, num_features)),
-    tf.keras.layers.Dense(32, activation='relu'),
-    tf.keras.layers.Dense(1, activation='sigmoid')
-])
+# Plot the accuracy and loss
+plt.plot(history.history['accuracy'])
+plt.plot(history.history['val_accuracy'])
+plt.title('Model accuracy')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Test'], loc='upper left')
+plt.show()
 
-# Compile the model with a loss function and optimizer
-model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
+plt.title('Model loss')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Test'], loc='upper left')
+plt.show()
 
-# Fit the model on the training data
-history = model.fit(X_train, y_train, batch_size=batch_size, epochs=num_epochs, 
-                    validation_data=(X_val, y_val))
+# Plot the confusion matrix
+y_pred = model.predict(X_test)
+y_pred = np.argmax(y_pred, axis=1)
+y_true = np.argmax(y_test, axis=1)
+cm = confusion_matrix(y_true, y_pred)
 
-# Evaluate the model on the validation data
-val_loss, val_acc = model.evaluate(X_val, y_val, batch_size=batch_size)
-print("Validation Loss: {:.4f}".format(val_loss))
-print("Validation Accuracy: {:.4f}".format(val_acc))
+df_cm = pd.DataFrame(cm, index=[i for i in ["REAL", "FAKE"]], columns=[i for i in ["REAL", "FAKE"]])
+plt.figure(figsize=(10, 7))
+plt.title("Confusion Matrix")
+sn.heatmap(df_cm, annot=True)
+plt.show()
