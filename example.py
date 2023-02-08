@@ -4,7 +4,7 @@ from pipeline import *
 import json
 from sklearn.metrics import confusion_matrix
 from tensorflow.keras import backend as K
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
@@ -54,6 +54,9 @@ for video_name, prediction in predictions.items():
 # Get the predicted labels
 predicted_labels = [prediction[0] for prediction in predictions.values()]
 
+ground_truth_labels = [1 if label == "FAKE" else 0 for label in ground_truth_labels]
+predicted_labels = [1 if prediction >= 0.5 else 0 for prediction in predicted_labels]
+
 # Calculate the confusion matrix
 conf_mat = confusion_matrix(ground_truth_labels, predicted_labels)
 
@@ -81,11 +84,11 @@ plt.ylabel('Value')
 plt.xticks([0, 1], ['Accuracy', 'Loss Rate'])
 plt.show()
 
+print("FINISHED")
 
 # predictions = compute_accuracy(classifier, 'data')
 # for video_name in predictions:
-#     print('`{}` video class prediction :'.format(
-#         video_name), predictions[video_name][0])
+#     print('`{}` video class prediction :'.format(#         video_name), predictions[video_name][0])
 
 # correct_predictions = 0
 # total_predictions = len(predictions)
