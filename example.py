@@ -49,7 +49,7 @@ ground_truth_labels = []
 for video_name, prediction in predictions.items():
     video_name = video_name + '.mp4'
     ground_truth_value = ground_truth[video_name]['label']
-    ground_truth_labels.append(1.0 if ground_truth_value == "FAKE" else 0.0)
+    ground_truth_labels.append(1.0 if ground_truth_value == "REAL" else 0.0)
 
 # Get the predicted labels
 predicted_labels = [prediction[0] for prediction in predictions.values()]
@@ -65,8 +65,8 @@ plt.imshow(conf_mat, cmap='Blues')
 plt.title('Confusion Matrix')
 plt.xlabel('Predicted')
 plt.ylabel('Ground Truth')
-plt.xticks([0, 1], ['Real', 'Fake'])
 plt.yticks([0, 1], ['Real', 'Fake'])
+plt.xticks([0, 1], ['Fake', 'Real'])
 plt.colorbar()
 for i in range(conf_mat.shape[0]):
     for j in range(conf_mat.shape[1]):
@@ -74,10 +74,12 @@ for i in range(conf_mat.shape[0]):
 plt.show()
 
 # Calculate the loss rate
-loss_rate = 1.0 - accuracy
+loss_rate = loss_matrix(ground_truth_labels, predicted_labels)
 
 # Plot the accuracy and loss rate
-plt.plot([accuracy, loss_rate])
+accuracy_value = accuracy(ground_truth_labels, predicted_labels)
+loss_rate_value = loss_matrix(ground_truth_labels, predicted_labels)
+plt.plot([accuracy_value, loss_rate_value])
 plt.title('Accuracy and Loss Rate')
 plt.xlabel('Metric')
 plt.ylabel('Value')
