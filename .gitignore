@@ -1,1 +1,4 @@
 data/*
+data_split/*
+Face_only_data/*
+Face_only_data_split/*
